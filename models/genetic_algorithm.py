@@ -3,7 +3,7 @@ import numpy as np
 class GeneticAlgorithm:
     def __init__(self, network_architecture, population_size, mutation_rate, mutation_scale, tournament_size):
         self.population_size = population_size
-
+        self.network_architecture = network_architecture
         self.num_params = 0
         for i in range(len(network_architecture) - 1):
             num_input = network_architecture[i]
@@ -20,7 +20,7 @@ class GeneticAlgorithm:
 
     def mutate(self, individual):
         mask = np.random.rand(len(individual)) < self.mutation_rate
-        individual[mask] = np.random.randn(np.sum(mask)) * self.mutation_scale
+        individual[mask] += np.random.randn(np.sum(mask)) * self.mutation_scale
         return individual
 
     def tournament_selection(self, fitness_scores):
@@ -58,19 +58,32 @@ class GeneticAlgorithm:
         return best_individual, best_fitness_history
 
 
-def fitness_function(individual, env, episodes=5):
+
+
+
+
+def fitness_function(individual, architecture, population, env, episodes=5, max_steps=1000):
     total_reward = 0
 
     for episode in range(episodes):
-        state = env.reset()
+        opponent_idx = np.random.randint(len(population))
+        opponent = population[opponent_idx]
+        state = env.reset_game()
         done = False
         episode_reward = 0
+        steps = 0
 
-        while not done:
-            action = env.action_space.sample() # fix later. need to place action from network
+        while not done and steps < max_steps:
+            action_left = get_action(architecture, individual, state)
+            action_right = get_action(architecture, opponent, state)
 
-            state, reward, done, info = env.step(action)
-            episode_reward += reward
+            # Convert from [0, 1, 2] to [-1, 0, 1]
+            action_left = action_left - 1
+            action_right = action_right - 1
+
+            state, reward_left, reward_right, done = env.step(action_left, action_right)
+            episode_reward += reward_left
+            steps += 1
 
         total_reward += episode_reward
 
@@ -82,4 +95,32 @@ def crossover(parent1, parent2):
     child = np.where(mask, parent1, parent2)
     return child
 
+def get_action(architecture, weights, state):
+    # feedforward
+    x = state
+    idx = 0
+
+    for i in range(len(architecture) - 1):
+        num_input = architecture[i]
+        num_output = architecture[i + 1]
+
+        # Extract weights for this layer
+        w_size = num_input * num_output
+        w = weights[idx:idx + w_size].reshape(num_input, num_output)
+        idx += w_size
+
+        # Extract biases for this layer
+        b = weights[idx:idx + num_output]
+        idx += num_output
+
+        # Compute layer output
+        x = np.dot(x, w) + b
+
+        # ReLU activation for hidden layers
+        if i < len(architecture) - 1:
+            x = np.maximum(0, x)
+
+    output = x
+
+    return np.argmax(output)
 

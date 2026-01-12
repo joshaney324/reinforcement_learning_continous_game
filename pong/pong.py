@@ -55,7 +55,6 @@ class Environment:
 
         self.ball_position += self.ball_velocity
 
-
         # hit ceiling or floor
         if self.ball_position[1] <= self.ball_radius or self.ball_position[1] >= self.height - self.ball_radius:
             self.ball_velocity[1] *= -1
@@ -65,14 +64,14 @@ class Environment:
 
         # collision with left paddle
         if (self.ball_position[0] - self.ball_radius <= self.paddle_width and
-            self.left_paddle_y <= self.ball_position[1] <= self.left_paddle_y + self.paddle_height):
-            self.ball_velocity[0] *= -1
+                self.left_paddle_y <= self.ball_position[1] <= self.left_paddle_y + self.paddle_height):
+            self.ball_velocity[0] = abs(self.ball_velocity[0])  # Force ball to move right
             reward_left = 1
 
         # collision with right paddle
-        if (self.ball_position[0] - self.ball_radius <= self.paddle_width and
-            self.right_paddle_y <= self.ball_position[1] <= self.right_paddle_y + self.paddle_height):
-            self.ball_velocity[0] *= -1
+        if (self.ball_position[0] + self.ball_radius >= self.width - self.paddle_width and
+                self.right_paddle_y <= self.ball_position[1] <= self.right_paddle_y + self.paddle_height):
+            self.ball_velocity[0] = -abs(self.ball_velocity[0])  # Force ball to move left
             reward_right = 1
 
         # right score
@@ -106,7 +105,7 @@ class Environment:
         score = self.font.render(f"{self.score_left} : {self.score_right}", True, (255,255,255))
         self.screen.blit(score, (self.width // 2 - 20, 10))
         pygame.display.flip()
-        self.clock.tick(60)
+        self.clock.tick(10)
 
 def test():
     env = Environment(render=True)
